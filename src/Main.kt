@@ -1,5 +1,5 @@
 fun main(args : Array<String>){
-    val source = "6+(5*3)/2"
+    val source = "6*3+5"
     val tokens :List<Token> = Lexer(source).scanTokens()
     for (token in tokens){
         println(token)
@@ -7,6 +7,17 @@ fun main(args : Array<String>){
     println("================")
     val expression =Parser(tokens).parse()
     Print(expression,0)
+    println("=====================")
+    val instruction : List<Instruction> = Compiler().compile(expression)
+    instruction.forEach { instruction :Instruction-> println(instruction) }
+    println("================")
+    val machine = Machine()
+    for (instruction in instruction){
+        machine.exectue(instruction)
+
+    }
+    println("Final Stack: [${machine.pop()}]")
+
 }
 fun Print(expr:Expr,indent:Int){
     val padding: String ="    ".repeat(indent)
