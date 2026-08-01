@@ -1,12 +1,35 @@
+import java.sql.Statement
+
 class Parser(private  val tokens: List<Token>) {
     private var currentPosition :Int = 0
     private fun peek():Token{
         return tokens[currentPosition]
     }
-    fun parse(): Expr {
-        val expression :Expr = parseExpression()
+    fun parse(): List<Stmt> {
+        val statements= mutableListOf<Stmt>()
+        while (!isAtEnd()){
+            statements.add(parseStatement())
+        }
         consume(TokenType.END_OF_FILE,"Expected end of file")
-        return expression
+        return statements
+    }
+    private fun parseStatement(): Stmt {
+        if (match(TokenType.LET)){
+            return parseVarDeclaration()
+        }
+        return parseExpressionStatement()
+    }
+    private  fun parseVarDeclaration(): Stmt{
+        val name :String = consume(TokenType.IDENTIFIER,"Expected identifier in variable").toString()
+        consume(TokenType.EQUAL,"Expected equal to in variable")
+        val initializer:Expr= parseExpression()
+        consume(TokenType.SEMICOLON,"Expected semicolon in variable")
+        return Stmt.VarDeclaration(name, initializer)
+    }
+    private fun parseExpressionStatement(): Stmt {
+        val expression:Expr = parseExpression()
+        consume(TokenType.SEMICOLON,"Expected semicolon in expression")
+        return Stmt.ExpressionStmt(expression)
     }
     private fun parseTerm():Expr{
         var workingExpression :Expr = parseFactor()
@@ -34,7 +57,11 @@ class Parser(private  val tokens: List<Token>) {
         if (match(TokenType.OPEN_PARENTHESIS)){
             val parsedExpression:Expr = parseExpression()
             consume(TokenType.CLOSE_PARENTHESIS,"Failed")
-            return parsedExpression    }
+            return parsedExpression
+        }
+        if (match(TokenType.IDENTIFIER)){
+            return Expr.Variable(previous().literal)
+        }
         error("Unable to parse factor , expected number or open-parenthesis expression")
     }
     private fun isAtEnd():Boolean{

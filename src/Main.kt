@@ -1,14 +1,14 @@
 fun main(args : Array<String>){
-    val source = "6*3+5"
+    val source = "let x = 5*3+2;x+3;"
     val tokens :List<Token> = Lexer(source).scanTokens()
     for (token in tokens){
         println(token)
     }
     println("================")
-    val expression =Parser(tokens).parse()
-    Print(expression,0)
-    println("=====================")
-    val instruction : List<Instruction> = Compiler().compile(expression)
+    val program : List<Stmt> =Parser(tokens).parse()
+    program.forEach {currentStatement:Stmt->printstmt(currentStatement,0)}
+ /*   println("=====================")
+    val instruction : List<Instruction> = Compiler().compile(program)
     instruction.forEach { instruction :Instruction-> println(instruction) }
     println("================")
     val machine = Machine()
@@ -17,8 +17,20 @@ fun main(args : Array<String>){
 
     }
     println("Final Stack: [${machine.pop()}]")
-
+*/
 }
+fun printstmt(stmt:Stmt,indent:Int){
+    val padding: String ="    ".repeat(indent)
+    when (stmt){
+        is Stmt.ExpressionStmt -> {
+            println("${padding}ExpressionStmt")
+            Print(stmt.expression,indent+1)
+        }
+        is Stmt.VarDeclaration -> {
+            println("${padding}VarDeclaration named ${stmt.name}")
+            Print(stmt.initializer,indent+1)
+        }
+}}
 fun Print(expr:Expr,indent:Int){
     val padding: String ="    ".repeat(indent)
     when (expr){
@@ -32,5 +44,8 @@ fun Print(expr:Expr,indent:Int){
 
 
         }
-    }
+
+    else -> {
+
+    }}
 }

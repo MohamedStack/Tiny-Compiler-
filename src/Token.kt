@@ -6,6 +6,11 @@ enum class TokenType{
     SLASH,
     OPEN_PARENTHESIS,
     CLOSE_PARENTHESIS,
+    SEMICOLON,
+    LET,
+    IDENTIFIER,
+    EQUAL,
+
     END_OF_FILE
 }
 data class Token(val type: TokenType, val literal:String="")

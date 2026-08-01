@@ -30,7 +30,19 @@ class Lexer(val input: String) {
         }
         tokens.add(Token(TokenType.NUMBER,input.substring(startingPosition,currentPosition)))
     }
+    private fun scanIdentifier(){
+        val startingPosition = currentPosition-1
+        while(peek().isLetter()){
+            advance()
+                }
+        val literal :String = input.substring(startingPosition,currentPosition)
+        if (literal=="let"){
+            tokens.add(Token(TokenType.LET))
 
+        }else{
+            tokens.add(Token(TokenType.IDENTIFIER,literal))
+        }
+    }
     private fun scanNextToken(){
         val currentCharacter :Char = advance()
         if (currentCharacter == '('){
@@ -56,6 +68,16 @@ class Lexer(val input: String) {
         }
         else if (currentCharacter == ' '|| currentCharacter=='\n' || currentCharacter=='\r' || currentCharacter=='\t'){
 
+        }
+        else if (currentCharacter == '='){
+            tokens.add(Token(TokenType.EQUAL))
+
+        }
+        else if (currentCharacter == ';'){
+            tokens.add(Token(TokenType.SEMICOLON))
+        }
+        else if (currentCharacter.isLetter()){
+            scanIdentifier()
         }
         else{
             error("Unexpected character '$currentCharacter'")
