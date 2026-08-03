@@ -10,6 +10,8 @@ enum class TokenType{
     LET,
     IDENTIFIER,
     EQUAL,
+    UPDATE,
+    TO,
 
     END_OF_FILE
 }

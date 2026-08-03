@@ -1,51 +1,59 @@
-fun main(args : Array<String>){
-    val source = "let x = 5*3+2;x+3;"
-    val tokens :List<Token> = Lexer(source).scanTokens()
-    for (token in tokens){
-        println(token)
-    }
-    println("================")
-    val program : List<Stmt> =Parser(tokens).parse()
-    program.forEach {currentStatement:Stmt->printstmt(currentStatement,0)}
- /*   println("=====================")
-    val instruction : List<Instruction> = Compiler().compile(program)
-    instruction.forEach { instruction :Instruction-> println(instruction) }
-    println("================")
-    val machine = Machine()
-    for (instruction in instruction){
-        machine.exectue(instruction)
+fun main(args: Array<String>) {
+    //val source : String = "6 + (4*2)/5 - 3*(4+(4*4 +5))";
+    //val source : String = "+++++";
+    //val source: String = "1+2+3+4"
+    val source: String = "let x = 5*2; let y=1; x+y;"
+    println("Source = $source")
+    println("====")
 
-    }
-    println("Final Stack: [${machine.pop()}]")
-*/
+    val tokens: List<Token> = Lexer(source).scanTokens();
+    // tokens.forEach { token: Token -> println(token)}
+
+    val program: List<Stmt> = Parser(tokens, shouldLog = false).parse()
+    program.forEach { currStatement: Stmt -> prettyPrint(currStatement, 0)}
+
+
+    val instructions: List<Instruction> = Compiler(shouldLog = false).compile(program)
+    println("=========")
+    instructions.forEach { instruction: Instruction -> println(instruction) }
+
+    val finalStack: List<Int> = Machine().run(instructions)
+    println("=========")
+    println("Final stack = $finalStack")
 }
-fun printstmt(stmt:Stmt,indent:Int){
-    val padding: String ="    ".repeat(indent)
-    when (stmt){
-        is Stmt.ExpressionStmt -> {
-            println("${padding}ExpressionStmt")
-            Print(stmt.expression,indent+1)
-        }
+
+fun prettyPrint(stmt: Stmt, indent: Int) {
+    val padding: String = "    ".repeat(indent)
+    when (stmt) {
         is Stmt.VarDeclaration -> {
             println("${padding}VarDeclaration named ${stmt.name}")
-            Print(stmt.initializer,indent+1)
+            prettyPrint(stmt.initializer, indent + 1)
+
         }
-}}
-fun Print(expr:Expr,indent:Int){
-    val padding: String ="    ".repeat(indent)
-    when (expr){
-        is Expr.NumberLiteral ->{
-            println("${padding} Number(${expr.value})")
+        is Stmt.ExpressionStmt -> {
+            println("${padding}ExpressionStmt")
+            prettyPrint(stmt.expression, indent + 1)
+        }
+        is Stmt.VarUpdate -> {
+            println("${padding}VarUpdate named ${stmt.name} ")
+            prettyPrint(stmt.value, indent + 1)
+        }
+    }
+}
+
+fun prettyPrint(expr: Expr, indent: Int) {
+    val padding: String = "    ".repeat(indent)
+    when (expr) {
+        is Expr.NumberLiteral -> {
+            println("${padding}Number(${expr.value})")
         }
         is Expr.Binary -> {
             println("${padding}Binary(${expr.operator.type})")
-            Print(expr.left,indent+1)
-            Print(expr.right,indent+1)
-
-
+            prettyPrint(expr.left, indent + 1)
+            prettyPrint(expr.right, indent + 1)
         }
-
-    else -> {
-
-    }}
+        is Expr.Variable -> {
+            println("${padding}Variable named ${expr.name}")
+        }
+    }
 }

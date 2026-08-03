@@ -1,103 +1,155 @@
-import java.sql.Statement
 
-class Parser(private  val tokens: List<Token>) {
-    private var currentPosition :Int = 0
-    private fun peek():Token{
-        return tokens[currentPosition]
+
+class Parser(private val tokens: List<Token>, private val shouldLog: Boolean) {
+    private var currentPosition: Int = 0
+
+    fun log(stmt: String) {
+        if (shouldLog) {
+            println(stmt)
+        }
     }
+
     fun parse(): List<Stmt> {
-        val statements= mutableListOf<Stmt>()
-        while (!isAtEnd()){
+        log("parse() Top level public parse function called")
+        val statements: MutableList<Stmt> = mutableListOf()
+        while (!isAtEnd()) {
             statements.add(parseStatement())
         }
-        consume(TokenType.END_OF_FILE,"Expected end of file")
+
+        log("parse() done parsing expression, verifying EOF exists")
+        consume(TokenType.END_OF_FILE, "Expected EOF to terminate the program")
+
         return statements
     }
+
     private fun parseStatement(): Stmt {
-        if (match(TokenType.LET)){
+        if (match(TokenType.LET)) {
             return parseVarDeclaration()
         }
-        return parseExpressionStatement()
+        else if (match(TokenType.UPDATE)){
+            return parseVarUpdate()
+        }
+        return parseExpressionStatment()
     }
-    private  fun parseVarDeclaration(): Stmt{
-        val name :String = consume(TokenType.IDENTIFIER,"Expected identifier in variable").toString()
-        consume(TokenType.EQUAL,"Expected equal to in variable")
-        val initializer:Expr= parseExpression()
-        consume(TokenType.SEMICOLON,"Expected semicolon in variable")
+    private  fun parseVarUpdate():Stmt{
+        val name : String = consume((TokenType.IDENTIFIER),"must specify a name")
+        consume(TokenType.TO,"expected literal to ")
+        val value :Expr= parseExpression()
+        consume(TokenType.SEMICOLON, "expected semicolon")
+        return Stmt.VarUpdate(name , value)
+    }
+
+    private fun parseVarDeclaration(): Stmt {
+        val name: String = consume(TokenType.IDENTIFIER, "Expect a name for a variable declaration").literal
+        consume(TokenType.EQUAL, "Expected = sign after variable name")
+        val initializer: Expr = parseExpression()
+        consume(TokenType.SEMICOLON, "Expected ; following variable declaration")
         return Stmt.VarDeclaration(name, initializer)
     }
-    private fun parseExpressionStatement(): Stmt {
-        val expression:Expr = parseExpression()
-        consume(TokenType.SEMICOLON,"Expected semicolon in expression")
+    private fun parseExpressionStatment(): Stmt {
+        val expression: Expr = parseExpression()
+        consume(TokenType.SEMICOLON, "Expected ; following expression statement")
         return Stmt.ExpressionStmt(expression)
     }
-    private fun parseTerm():Expr{
-        var workingExpression :Expr = parseFactor()
-        while (match(TokenType.STAR,TokenType.SLASH)){
-            val operator = previous()
-            val parsedFactor = parseFactor()
-            workingExpression = Expr.Binary(workingExpression,operator,parsedFactor)
+
+    private fun parseExpression(): Expr {
+        log("parseExpression() called, will start by parsing term()")
+        var  workingExpression: Expr = parseTerm()
+        log("parseExpression() done parsing term, now checking for + - Term")
+        while (match(TokenType.PLUS, TokenType.MINUS)) {
+            log("parseExpression() found a ${previous()}, will parse term again")
+            val operator: Token = previous()
+            val parsedTerm: Expr = parseTerm()
+            // Left unfolding that maintains left-to-right execution of terms of the same precedence
+            workingExpression = Expr.Binary(workingExpression, operator, parsedTerm)
         }
         return workingExpression
 
     }
-    private fun parseExpression():Expr{
-        var workingExpression :Expr = parseTerm()
-        while (match(TokenType.PLUS,TokenType.MINUS)) {
-            val operator:Token = previous()
-            val parsedTerm :Expr =parseTerm()
-            workingExpression= Expr.Binary(workingExpression,operator,parsedTerm)
+
+    private fun parseTerm(): Expr {
+        log("parseTerm() called, will start by calling parseFactor()")
+        var workingExpression: Expr = parseFactor()
+
+        log("parseTerm() done parsing term, now checking for * / Term")
+        while (match(TokenType.STAR, TokenType.SLASH)) {
+            log("parseTerm() found a ${previous()}, will parse term again")
+            val operator: Token = previous()
+            val parsedFactor: Expr = parseFactor()
+            workingExpression = Expr.Binary(workingExpression, operator, parsedFactor)
         }
         return workingExpression
     }
-    private  fun parseFactor():Expr{
-        if (match(TokenType.NUMBER)){
+
+    private fun parseFactor(): Expr {
+        log("parseFactor() called")
+        // Case 1: integer
+        if (match(TokenType.NUMBER)) {
+            log("parseFactor() matched a ${previous()} , will return literal")
             return Expr.NumberLiteral(previous().literal.toInt())
         }
-        if (match(TokenType.OPEN_PARENTHESIS)){
-            val parsedExpression:Expr = parseExpression()
-            consume(TokenType.CLOSE_PARENTHESIS,"Failed")
+
+        // Case 2: ( E )
+        if (match(TokenType.OPEN_PARENTHESIS)) {
+            log("parseFactor() matched an open parenthesis, will parse expression now")
+            val parsedExpression: Expr = parseExpression()
+            log("parseFactor() done parsing expression, checking for close parenthesis")
+            consume(TokenType.CLOSE_PARENTHESIS, "Failed to parse a factor, expected ) following (")
             return parsedExpression
         }
-        if (match(TokenType.IDENTIFIER)){
+
+        // Case 3: identifier
+        if (match(TokenType.IDENTIFIER)) {
             return Expr.Variable(previous().literal)
         }
-        error("Unable to parse factor , expected number or open-parenthesis expression")
-    }
-    private fun isAtEnd():Boolean{
-        return peek().type == TokenType.END_OF_FILE
 
+        error("Unable to parse factor, expected a number or open parenthesis")
     }
-    private fun advance() : Token{
-        if (!isAtEnd()){
-            currentPosition=currentPosition+1
+
+    private fun peek(): Token {
+        return tokens[currentPosition];
+    }
+
+    private fun isAtEnd(): Boolean {
+        return peek().type == TokenType.END_OF_FILE
+    }
+
+    private fun previous(): Token {
+        return tokens[currentPosition - 1]
+    }
+
+    private fun advance(): Token {
+        if (!isAtEnd()) {
+            currentPosition = currentPosition + 1
         }
         return previous()
     }
-    private fun previous():Token{
-        return tokens[currentPosition-1]
-    }
-    private fun check(type:TokenType): Boolean{
-        if (isAtEnd()){
-            return type==TokenType.END_OF_FILE
+
+    private fun check(type: TokenType): Boolean {
+        if (isAtEnd()) {
+            return type == TokenType.END_OF_FILE
         }
         return peek().type == type
     }
-    private fun consume(type:TokenType,message:String):Token{
-        if (check(type)){
+
+    private fun consume(type: TokenType, message: String): Token {
+        if (check(type)) {
             return advance()
         }
         error(message)
     }
-    private  fun match(vararg type : TokenType): Boolean {
-        for (type in type){
-            if (check(type)){
+
+    private fun match(vararg types: TokenType): Boolean {
+        for (type in types) {
+            if (check(type)) {
                 advance()
                 return true
-
             }
-
         }
         return false
     }
+
+
+
+
 }
